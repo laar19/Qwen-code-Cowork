@@ -1,0 +1,28 @@
+{
+    "appId": "com.qwencowork.client",
+    "productName": "Qwen Cowork",
+    "files": [
+        "dist-electron",
+        "dist-react"
+    ],
+    "extraResources": [
+        "dist-electron/preload.cjs",
+        "resources/qwen-shim.sh"
+    ],
+    "asarUnpack": [
+        "node_modules/@anthropic-ai/claude-agent-sdk/**/*"
+    ],
+    "icon": "./claude-color.png",
+    "mac": {
+        "target": "dmg"
+    },
+    "linux": {
+        "target": "AppImage",
+        "category": "Utility"
+    },
+    "win": {
+        "target": [
+            "portable"
+        ]
+    }
+}

@@ -1,0 +1,145 @@
+# =============================================================================
+# LiteLLM Advanced Configuration
+# =============================================================================
+# This is an advanced configuration file for LiteLLM proxy.
+# Use this when you need:
+#   - Multiple models behind a single endpoint
+#   - Model aliasing (disguise one model as another)
+#   - Load balancing between providers
+#   - Rate limiting and retry logic
+#
+# Usage:
+#   1. Copy this file to config.yaml
+#   2. Set LITELLM_CONFIG_PATH=/path/to/config.yaml in .env
+#   3. Or run: litellm --config config.yaml
+# =============================================================================
+
+# =============================================================================
+# MODEL LIST
+# =============================================================================
+# Define all models you want to expose through the proxy.
+# model_name: The name exposed to clients (what they'll request)
+# litellm_params.model: The actual model to call
+
+model_list:
+  # -----------------------------------------------------------------------------
+  # DeepSeek Models
+  # -----------------------------------------------------------------------------
+  - model_name: deepseek-chat
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: os.environ/DEEPSEEK_API_KEY
+
+  - model_name: deepseek-coder
+    litellm_params:
+      model: deepseek/deepseek-coder
+      api_key: os.environ/DEEPSEEK_API_KEY
+
+  # -----------------------------------------------------------------------------
+  # Alias: Make DeepSeek respond to Anthropic model names
+  # This tricks apps expecting Claude into using DeepSeek
+  # -----------------------------------------------------------------------------
+  - model_name: claude-3-5-sonnet-20241022
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: os.environ/DEEPSEEK_API_KEY
+
+  - model_name: claude-3-sonnet-20240229
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: os.environ/DEEPSEEK_API_KEY
+
+  # -----------------------------------------------------------------------------
+  # Mistral Models
+  # -----------------------------------------------------------------------------
+  # - model_name: mistral-large
+  #   litellm_params:
+  #     model: mistral/mistral-large-latest
+  #     api_key: os.environ/MISTRAL_API_KEY
+
+  # - model_name: mistral-medium
+  #   litellm_params:
+  #     model: mistral/mistral-medium-latest
+  #     api_key: os.environ/MISTRAL_API_KEY
+
+  # -----------------------------------------------------------------------------
+  # OpenAI Models
+  # -----------------------------------------------------------------------------
+  # - model_name: gpt-4
+  #   litellm_params:
+  #     model: openai/gpt-4
+  #     api_key: os.environ/OPENAI_API_KEY
+
+  # - model_name: gpt-3.5-turbo
+  #   litellm_params:
+  #     model: openai/gpt-3.5-turbo
+  #     api_key: os.environ/OPENAI_API_KEY
+
+  # -----------------------------------------------------------------------------
+  # SiliconFlow (OpenAI-compatible) Models
+  # -----------------------------------------------------------------------------
+  # - model_name: siliconflow-qwen
+  #   litellm_params:
+  #     model: openai/Qwen/Qwen2.5-72B-Instruct
+  #     api_key: os.environ/SILICONFLOW_API_KEY
+  #     api_base: https://api.siliconflow.cn/v1
+
+  # - model_name: siliconflow-deepseek
+  #   litellm_params:
+  #     model: openai/deepseek-ai/DeepSeek-V3
+  #     api_key: os.environ/SILICONFLOW_API_KEY
+  #     api_base: https://api.siliconflow.cn/v1
+
+  # -----------------------------------------------------------------------------
+  # Load Balancing Example
+  # Multiple deployments with the same model_name = automatic load balancing
+  # -----------------------------------------------------------------------------
+  # - model_name: load-balanced-chat
+  #   litellm_params:
+  #     model: deepseek/deepseek-chat
+  #     api_key: os.environ/DEEPSEEK_API_KEY
+  #   tpm: 100000  # tokens per minute limit
+
+  # - model_name: load-balanced-chat
+  #   litellm_params:
+  #     model: mistral/mistral-large-latest
+  #     api_key: os.environ/MISTRAL_API_KEY
+  #   tpm: 100000
+
+# =============================================================================
+# GENERAL SETTINGS
+# =============================================================================
+
+litellm_settings:
+  # Drop parameters that the target model doesn't support
+  drop_params: true
+  
+  # Enable request/response caching
+  # cache: true
+  
+  # Set default timeout (seconds)
+  request_timeout: 120
+  
+  # Number of retries on failure
+  num_retries: 2
+  
+  # Retry delay (seconds)
+  retry_after: 1
+
+# =============================================================================
+# ROUTER SETTINGS (for load balancing)
+# =============================================================================
+
+# router_settings:
+#   routing_strategy: least-busy  # Options: simple-shuffle, least-busy, latency-based-routing
+#   model_group_alias:
+#     gpt-4: load-balanced-chat  # Alias "gpt-4" requests to use load-balanced-chat
+
+# =============================================================================
+# OPTIONAL: AUTHENTICATION
+# =============================================================================
+# Uncomment to require API keys for clients connecting to your proxy
+
+# general_settings:
+#   master_key: sk-your-master-key-here
+#   database_url: postgresql://user:password@localhost/litellm

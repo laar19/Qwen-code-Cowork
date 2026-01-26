@@ -1,0 +1,31 @@
+{
+    "appId": "com.openclaudecowork.launcher",
+    "productName": "Open Claude Cowork",
+    "files": [
+        "dist-electron",
+        "dist-react"
+    ],
+    "extraResources": [
+        {
+            "from": "resources/lite_llm_proxy/dist/litellm-proxy",
+            "to": "lite_llm_proxy/dist/litellm-proxy",
+            "filter": [
+                "**/*"
+            ]
+        },
+        {
+            "from": "resources/lite_llm_proxy/main.py",
+            "to": "lite_llm_proxy/main.py"
+        },
+        {
+            "from": "../Claude-Cowork-main/dist/Agent Cowork-0.1.0.AppImage",
+            "to": "claude-cowork/claude-cowork.AppImage"
+        }
+    ],
+    "icon": "../Claude-Cowork-main/claude-color.png",
+    "linux": {
+        "target": "AppImage",
+        "category": "Development"
+    },
+    "asar": true
+}

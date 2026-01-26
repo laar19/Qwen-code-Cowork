@@ -1,0 +1,8 @@
+# LiteLLM Proxy Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core LiteLLM with proxy support
+litellm[proxy]>=1.0.0
+
+# Optional: Load .env files automatically
+python-dotenv>=1.0.0
