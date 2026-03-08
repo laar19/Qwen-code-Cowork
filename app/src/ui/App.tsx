@@ -1,105 +1,105 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { PermissionResult } from "@anthropic-ai/claude-agent-sdk";
-import { useIPC } from "./hooks/useIPC";
-import { useMessageWindow } from "./hooks/useMessageWindow";
-import { useAppStore } from "./store/useAppStore";
-import type { ServerEvent } from "./types";
-import { Sidebar } from "./components/Sidebar";
-import { StartSessionModal } from "./components/StartSessionModal";
-import { SettingsModal } from "./components/SettingsModal";
-import { PromptInput, usePromptActions } from "./components/PromptInput";
-import { MessageCard } from "./components/EventCard";
-import MDContent from "./render/markdown";
+import { useCallback, useEffect, useRef, useState } from "react"
+import type { PermissionResult } from "@anthropic-ai/claude-agent-sdk"
+import { useIPC } from "./hooks/useIPC"
+import { useMessageWindow } from "./hooks/useMessageWindow"
+import { useAppStore } from "./store/useAppStore"
+import type { ServerEvent } from "./types"
+import { Sidebar } from "./components/Sidebar"
+import { StartSessionModal } from "./components/StartSessionModal"
+import { SettingsModal } from "./components/SettingsModal"
+import { PromptInput, usePromptActions } from "./components/PromptInput"
+import { MessageCard } from "./components/EventCard"
+import MDContent from "./render/markdown"
 
-const SCROLL_THRESHOLD = 50;
+const SCROLL_THRESHOLD = 50
 
 function App() {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const topSentinelRef = useRef<HTMLDivElement>(null);
-  const partialMessageRef = useRef("");
-  const [partialMessage, setPartialMessage] = useState("");
-  const [showPartialMessage, setShowPartialMessage] = useState(false);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
-  const prevMessagesLengthRef = useRef(0);
-  const scrollHeightBeforeLoadRef = useRef(0);
-  const shouldRestoreScrollRef = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const topSentinelRef = useRef<HTMLDivElement>(null)
+  const partialMessageRef = useRef("")
+  const [partialMessage, setPartialMessage] = useState("")
+  const [showPartialMessage, setShowPartialMessage] = useState(false)
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+  const [hasNewMessages, setHasNewMessages] = useState(false)
+  const prevMessagesLengthRef = useRef(0)
+  const scrollHeightBeforeLoadRef = useRef(0)
+  const shouldRestoreScrollRef = useRef(false)
 
-  const sessions = useAppStore((s) => s.sessions);
-  const activeSessionId = useAppStore((s) => s.activeSessionId);
-  const showStartModal = useAppStore((s) => s.showStartModal);
-  const setShowStartModal = useAppStore((s) => s.setShowStartModal);
-  const showSettingsModal = useAppStore((s) => s.showSettingsModal);
-  const setShowSettingsModal = useAppStore((s) => s.setShowSettingsModal);
-  const globalError = useAppStore((s) => s.globalError);
-  const setGlobalError = useAppStore((s) => s.setGlobalError);
-  const historyRequested = useAppStore((s) => s.historyRequested);
-  const markHistoryRequested = useAppStore((s) => s.markHistoryRequested);
-  const resolvePermissionRequest = useAppStore((s) => s.resolvePermissionRequest);
-  const handleServerEvent = useAppStore((s) => s.handleServerEvent);
-  const prompt = useAppStore((s) => s.prompt);
-  const setPrompt = useAppStore((s) => s.setPrompt);
-  const cwd = useAppStore((s) => s.cwd);
-  const setCwd = useAppStore((s) => s.setCwd);
-  const pendingStart = useAppStore((s) => s.pendingStart);
-  const apiConfigChecked = useAppStore((s) => s.apiConfigChecked);
-  const setApiConfigChecked = useAppStore((s) => s.setApiConfigChecked);
+  const sessions = useAppStore((s) => s.sessions)
+  const activeSessionId = useAppStore((s) => s.activeSessionId)
+  const showStartModal = useAppStore((s) => s.showStartModal)
+  const setShowStartModal = useAppStore((s) => s.setShowStartModal)
+  const showSettingsModal = useAppStore((s) => s.showSettingsModal)
+  const setShowSettingsModal = useAppStore((s) => s.setShowSettingsModal)
+  const globalError = useAppStore((s) => s.globalError)
+  const setGlobalError = useAppStore((s) => s.setGlobalError)
+  const historyRequested = useAppStore((s) => s.historyRequested)
+  const markHistoryRequested = useAppStore((s) => s.markHistoryRequested)
+  const resolvePermissionRequest = useAppStore((s) => s.resolvePermissionRequest)
+  const handleServerEvent = useAppStore((s) => s.handleServerEvent)
+  const prompt = useAppStore((s) => s.prompt)
+  const setPrompt = useAppStore((s) => s.setPrompt)
+  const cwd = useAppStore((s) => s.cwd)
+  const setCwd = useAppStore((s) => s.setCwd)
+  const pendingStart = useAppStore((s) => s.pendingStart)
+  const apiConfigChecked = useAppStore((s) => s.apiConfigChecked)
+  const setApiConfigChecked = useAppStore((s) => s.setApiConfigChecked)
 
   // Helper function to extract partial message content
   const getPartialMessageContent = (eventMessage: any) => {
     try {
-      const realType = eventMessage.delta.type.split("_")[0];
-      return eventMessage.delta[realType];
+      const realType = eventMessage.delta.type.split("_")[0]
+      return eventMessage.delta[realType]
     } catch (error) {
-      console.error(error);
-      return "";
+      console.error(error)
+      return ""
     }
-  };
+  }
 
   // Handle partial messages from stream events
   const handlePartialMessages = useCallback((partialEvent: ServerEvent) => {
-    if (partialEvent.type !== "stream.message" || partialEvent.payload.message.type !== "stream_event") return;
+    if (partialEvent.type !== "stream.message" || partialEvent.payload.message.type !== "stream_event") return
 
-    const message = partialEvent.payload.message as any;
+    const message = partialEvent.payload.message as any
     if (message.event.type === "content_block_start") {
-      partialMessageRef.current = "";
-      setPartialMessage(partialMessageRef.current);
-      setShowPartialMessage(true);
+      partialMessageRef.current = ""
+      setPartialMessage(partialMessageRef.current)
+      setShowPartialMessage(true)
     }
 
     if (message.event.type === "content_block_delta") {
-      partialMessageRef.current += getPartialMessageContent(message.event) || "";
-      setPartialMessage(partialMessageRef.current);
+      partialMessageRef.current += getPartialMessageContent(message.event) || ""
+      setPartialMessage(partialMessageRef.current)
       if (shouldAutoScroll) {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
       } else {
-        setHasNewMessages(true);
+        setHasNewMessages(true)
       }
     }
 
     if (message.event.type === "content_block_stop") {
-      setShowPartialMessage(false);
+      setShowPartialMessage(false)
       setTimeout(() => {
-        partialMessageRef.current = "";
-        setPartialMessage(partialMessageRef.current);
-      }, 500);
+        partialMessageRef.current = ""
+        setPartialMessage(partialMessageRef.current)
+      }, 500)
     }
-  }, [shouldAutoScroll]);
+  }, [shouldAutoScroll])
 
   // Combined event handler
   const onEvent = useCallback((event: ServerEvent) => {
-    handleServerEvent(event);
-    handlePartialMessages(event);
-  }, [handleServerEvent, handlePartialMessages]);
+    handleServerEvent(event)
+    handlePartialMessages(event)
+  }, [handleServerEvent, handlePartialMessages])
 
-  const { connected, sendEvent } = useIPC(onEvent);
-  const { handleStartFromModal } = usePromptActions(sendEvent);
+  const { connected, sendEvent } = useIPC(onEvent)
+  const { handleStartFromModal } = usePromptActions(sendEvent)
 
-  const activeSession = activeSessionId ? sessions[activeSessionId] : undefined;
-  const messages = activeSession?.messages ?? [];
-  const permissionRequests = activeSession?.permissionRequests ?? [];
-  const isRunning = activeSession?.status === "running";
+  const activeSession = activeSessionId ? sessions[activeSessionId] : undefined
+  const messages = activeSession?.messages ?? []
+  const permissionRequests = activeSession?.permissionRequests ?? []
+  const isRunning = activeSession?.status === "running"
 
   const {
     visibleMessages,
@@ -108,64 +108,92 @@ function App() {
     loadMoreMessages,
     resetToLatest,
     totalMessages,
-  } = useMessageWindow(messages, permissionRequests, activeSessionId);
+  } = useMessageWindow(messages, permissionRequests, activeSessionId)
+
+  // Drag and drop file handling
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      const file = files[0]
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const content = event.target?.result as string
+        sendEvent({
+          type: "user.message",
+          payload: {
+            sessionId: activeSessionId,
+            message: {
+              type: "text",
+              content: `User uploaded file: ${file.name}\n\n\[File content start]\n${content.substring(0, 2000)}\n\n\[File content truncated]\n\nWhat would you like to do with this file?`,
+            }
+          }
+        })
+      }
+      reader.readAsText(file)
+    }
+  }, [sendEvent, activeSessionId])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+  }, [])
 
   // 启动时检查 API 配置
   useEffect(() => {
     if (!apiConfigChecked) {
       window.electron.checkApiConfig().then((result) => {
-        setApiConfigChecked(true);
+        setApiConfigChecked(true)
         if (!result.hasConfig) {
-          setShowSettingsModal(true);
+          setShowSettingsModal(true)
         }
       }).catch((err) => {
-        console.error("Failed to check API config:", err);
-        setApiConfigChecked(true);
-      });
+        console.error("Failed to check API config:", err)
+        setApiConfigChecked(true)
+      })
     }
-  }, [apiConfigChecked, setApiConfigChecked, setShowSettingsModal]);
+  }, [apiConfigChecked, setApiConfigChecked, setShowSettingsModal])
 
   useEffect(() => {
-    if (connected) sendEvent({ type: "session.list" });
-  }, [connected, sendEvent]);
+    if (connected) sendEvent({ type: "session.list" })
+  }, [connected, sendEvent])
 
   useEffect(() => {
-    if (!activeSessionId || !connected) return;
-    const session = sessions[activeSessionId];
+    if (!activeSessionId || !connected) return
+    const session = sessions[activeSessionId]
     if (session && !session.hydrated && !historyRequested.has(activeSessionId)) {
-      markHistoryRequested(activeSessionId);
-      sendEvent({ type: "session.history", payload: { sessionId: activeSessionId } });
+      markHistoryRequested(activeSessionId)
+      sendEvent({ type: "session.history", payload: { sessionId: activeSessionId } })
     }
-  }, [activeSessionId, connected, sessions, historyRequested, markHistoryRequested, sendEvent]);
+  }, [activeSessionId, connected, sessions, historyRequested, markHistoryRequested, sendEvent])
 
   const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
+    const container = scrollContainerRef.current
+    if (!container) return
 
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const isAtBottom = scrollTop + clientHeight >= scrollHeight - SCROLL_THRESHOLD;
+    const { scrollTop, scrollHeight, clientHeight } = container
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - SCROLL_THRESHOLD
 
     if (isAtBottom !== shouldAutoScroll) {
-      setShouldAutoScroll(isAtBottom);
+      setShouldAutoScroll(isAtBottom)
       if (isAtBottom) {
-        setHasNewMessages(false);
+        setHasNewMessages(false)
       }
     }
-  }, [shouldAutoScroll]);
+  }, [shouldAutoScroll])
 
   // Set up IntersectionObserver for top sentinel
   useEffect(() => {
-    const sentinel = topSentinelRef.current;
-    const container = scrollContainerRef.current;
-    if (!sentinel || !container) return;
+    const sentinel = topSentinelRef.current
+    const container = scrollContainerRef.current
+    if (!sentinel || !container) return
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const entry = entries[0];
+        const entry = entries[0]
         if (entry.isIntersecting && hasMoreHistory && !isLoadingHistory) {
-          scrollHeightBeforeLoadRef.current = container.scrollHeight;
-          shouldRestoreScrollRef.current = true;
-          loadMoreMessages();
+          scrollHeightBeforeLoadRef.current = container.scrollHeight
+          shouldRestoreScrollRef.current = true
+          loadMoreMessages()
         }
       },
       {
@@ -173,74 +201,74 @@ function App() {
         rootMargin: "100px 0px 0px 0px",
         threshold: 0,
       }
-    );
+    )
 
-    observer.observe(sentinel);
+    observer.observe(sentinel)
 
     return () => {
-      observer.disconnect();
-    };
-  }, [hasMoreHistory, isLoadingHistory, loadMoreMessages]);
+      observer.disconnect()
+    }
+  }, [hasMoreHistory, isLoadingHistory, loadMoreMessages])
 
   // Restore scroll position after loading history
   useEffect(() => {
     if (shouldRestoreScrollRef.current && !isLoadingHistory) {
-      const container = scrollContainerRef.current;
+      const container = scrollContainerRef.current
       if (container) {
-        const newScrollHeight = container.scrollHeight;
-        const scrollDiff = newScrollHeight - scrollHeightBeforeLoadRef.current;
-        container.scrollTop += scrollDiff;
+        const newScrollHeight = container.scrollHeight
+        const scrollDiff = newScrollHeight - scrollHeightBeforeLoadRef.current
+        container.scrollTop += scrollDiff
       }
-      shouldRestoreScrollRef.current = false;
+      shouldRestoreScrollRef.current = false
     }
-  }, [visibleMessages, isLoadingHistory]);
+  }, [visibleMessages, isLoadingHistory])
 
   // Reset scroll state on session change
   useEffect(() => {
-    setShouldAutoScroll(true);
-    setHasNewMessages(false);
-    prevMessagesLengthRef.current = 0;
+    setShouldAutoScroll(true)
+    setHasNewMessages(false)
+    prevMessagesLengthRef.current = 0
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-    }, 100);
-  }, [activeSessionId]);
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
+    }, 100)
+  }, [activeSessionId])
 
   useEffect(() => {
     if (shouldAutoScroll) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     } else if (messages.length > prevMessagesLengthRef.current && prevMessagesLengthRef.current > 0) {
-      setHasNewMessages(true);
+      setHasNewMessages(true)
     }
-    prevMessagesLengthRef.current = messages.length;
-  }, [messages, partialMessage, shouldAutoScroll]);
+    prevMessagesLengthRef.current = messages.length
+  }, [messages, partialMessage, shouldAutoScroll])
 
   const scrollToBottom = useCallback(() => {
-    setShouldAutoScroll(true);
-    setHasNewMessages(false);
-    resetToLatest();
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [resetToLatest]);
+    setShouldAutoScroll(true)
+    setHasNewMessages(false)
+    resetToLatest()
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [resetToLatest])
 
   const handleNewSession = useCallback(() => {
-    useAppStore.getState().setActiveSessionId(null);
-    setShowStartModal(true);
-  }, [setShowStartModal]);
+    useAppStore.getState().setActiveSessionId(null)
+    setShowStartModal(true)
+  }, [setShowStartModal])
 
   const handleDeleteSession = useCallback((sessionId: string) => {
-    sendEvent({ type: "session.delete", payload: { sessionId } });
-  }, [sendEvent]);
+    sendEvent({ type: "session.delete", payload: { sessionId } })
+  }, [sendEvent])
 
   const handlePermissionResult = useCallback((toolUseId: string, result: PermissionResult) => {
-    if (!activeSessionId) return;
-    sendEvent({ type: "permission.response", payload: { sessionId: activeSessionId, toolUseId, result } });
-    resolvePermissionRequest(activeSessionId, toolUseId);
-  }, [activeSessionId, sendEvent, resolvePermissionRequest]);
+    if (!activeSessionId) return
+    sendEvent({ type: "permission.response", payload: { sessionId: activeSessionId, toolUseId, result } })
+    resolvePermissionRequest(activeSessionId, toolUseId)
+  }, [activeSessionId, sendEvent, resolvePermissionRequest])
 
   const handleSendMessage = useCallback(() => {
-    setShouldAutoScroll(true);
-    setHasNewMessages(false);
-    resetToLatest();
-  }, [resetToLatest]);
+    setShouldAutoScroll(true)
+    setHasNewMessages(false)
+    resetToLatest()
+  }, [resetToLatest])
 
   return (
     <div className="flex h-screen bg-surface">
@@ -261,6 +289,8 @@ function App() {
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
           className="flex-1 overflow-y-auto px-8 pb-40 pt-6"
         >
           <div className="mx-auto max-w-3xl">
@@ -376,7 +406,7 @@ function App() {
         </div>
       )}
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
