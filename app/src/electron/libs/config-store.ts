@@ -11,11 +11,25 @@ export type ApiConfig = {
   apiType?: ApiType; // "anthropic" 
 };
 
+export type AgentConfig = {
+  agent: string;
+  apiKey: string;
+  baseURL: string;
+  model: string;
+  port: string;
+};
+
 const CONFIG_FILE_NAME = "api-config.json";
+const AGENT_CONFIG_FILE_NAME = "agent-config.json";
 
 function getConfigPath(): string {
   const userDataPath = app.getPath("userData");
   return join(userDataPath, CONFIG_FILE_NAME);
+}
+
+function getAgentConfigPath(): string {
+  const userDataPath = app.getPath("userData");
+  return join(userDataPath, AGENT_CONFIG_FILE_NAME);
 }
 
 export function loadApiConfig(): ApiConfig | null {
@@ -82,3 +96,22 @@ export function deleteApiConfig(): void {
   }
 }
 
+// Save agent config to a JSON file
+export const saveAgentConfig = async (config: AgentConfig) => {
+  const configPath = getAgentConfigPath()
+  await fs.promises.writeFile(configPath, JSON.stringify(config, null, 2))
+}
+
+// Load agent config
+export const getAgentConfig = async () => {
+  const configPath = getAgentConfigPath()
+  try {
+    const data = await fs.promises.readFile(configPath, "utf-8")
+    return JSON.parse(data)
+  } catch (error) {
+    return {} // Return empty if file doesn't exist
+  }
+}
+
+// Existing config functions...
+// export const saveApiConfig = (config: any) => { /* ... */ }
