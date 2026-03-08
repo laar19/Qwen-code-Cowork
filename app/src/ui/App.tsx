@@ -138,6 +138,56 @@ function App() {
     e.preventDefault()
   }, [])
 
+  // Export conversation
+  const handleExport = useCallback(async (format: "json" | "markdown") => {
+    if (!activeSessionId) return
+    try {
+      const result = await window.electron.exportConversation({ sessionId: activeSessionId, format })
+      if (result.success) {
+        alert(`Conversation exported as ${format}!`)
+      } else {
+        alert("Export failed.")
+      }
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }, [activeSessionId])
+
+  // Workspace management
+  const [workspaces, setWorkspaces] = useState<{id: string, name: string, sessionIds: string[]}[]>([])
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchWorkspaces = async () => {
+      const wsList = await window.electron.workspaceList()
+      setWorkspaces(wsList)
+    }
+    fetchWorkspaces()
+  }, [])
+
+  const handleCreateWorkspace = useCallback(async () => {
+    const name = prompt("Enter workspace name:")
+    if (!name) return
+    const { id } = await window.electron.workspaceCreate({ name })
+    setWorkspaces(prev => [...prev, { id, name, sessionIds: [] }])
+    setActiveWorkspaceId(id)
+  }, [])
+
+  const handleRenameWorkspace = useCallback(async (id: string) => {
+    const name = prompt("Enter new workspace name:")
+    if (!name) return
+    await window.electron.workspaceRename({ id, name })
+    setWorkspaces(prev => prev.map(ws => ws.id === id ? { ...ws, name } : ws))
+  }, [])
+
+  const handleDeleteWorkspace = useCallback(async (id: string) => {
+    if (confirm("Delete this workspace?")) {
+      await window.electron.workspaceDelete({ id })
+      setWorkspaces(prev => prev.filter(ws => ws.id !== id))
+      if (activeWorkspaceId === id) setActiveWorkspaceId(null)
+    }
+  }, [activeWorkspaceId])
+
   // 启动时检查 API 配置
   useEffect(() => {
     if (!apiConfigChecked) {
@@ -279,11 +329,43 @@ function App() {
       />
 
       <main className="flex flex-1 flex-col ml-[280px] bg-surface-cream">
-        <div
-          className="flex items-center justify-center h-12 border-b border-ink-900/10 bg-surface-cream select-none"
-          style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-        >
+        <div className="flex items-center justify-between h-12 border-b border-ink-900/10 bg-surface-cream select-none px-4">
           <span className="text-sm font-medium text-ink-700">{activeSession?.title || "Qwen Cowork"}</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleExport("json")}
+              className="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent-hover"
+            >
+              Export JSON
+            </button>
+            <button
+              onClick={() => handleExport("markdown")}
+              className="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent-hover"
+            >
+              Export MD
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between h-12 border-b border-ink-900/10 bg-surface-cream select-none px-4">
+          <select
+            value={activeWorkspaceId || ""}
+            onChange={(e) => setActiveWorkspaceId(e.target.value)}
+            className="px-2 py-1 text-xs bg-surface rounded border border-ink-900/20"
+          >
+            <option value="">Select Workspace</option>
+            {workspaces.map((ws) => (
+              <option key={ws.id} value={ws.id}>{ws.name}</option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCreateWorkspace}
+              className="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent-hover"
+            >
+              New Workspace
+            </button>
+          </div>
         </div>
 
         <div
