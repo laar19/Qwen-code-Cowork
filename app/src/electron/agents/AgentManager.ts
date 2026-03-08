@@ -1,6 +1,7 @@
 import { ClaudeAgent } from "./ClaudeAgent"
 import { QwenAgent } from "./QwenAgent"
 import { OpenClawAgent } from "./OpenClawAgent"
+import { getAgentConfig } from "../libs/config-store"
 
 // Define the interface for all agents
 interface Agent {
@@ -22,6 +23,13 @@ export class AgentManager {
     }
     // Default to Qwen agent
     this.activeAgent = this.agents.qwen
+  }
+
+  async initialize() {
+    const config = await getAgentConfig()
+    if (config.agent && this.agents[config.agent]) {
+      this.setActiveAgent(config.agent)
+    }
   }
 
   setActiveAgent(agentName: string): void {
