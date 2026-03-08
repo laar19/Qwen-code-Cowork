@@ -121,9 +121,8 @@ app.on("ready", () => {
             preload: getPreloadPath(),
         },
         icon: getIconPath(),
-        titleBarStyle: "hiddenInset",
+        titleBarStyle: "hidden",
         backgroundColor: "#FAF9F6",
-        trafficLightPosition: { x: 15, y: 18 }
     })
 
     if (isDev()) mainWindow.loadURL(`http://localhost:${DEV_PORT}`)
