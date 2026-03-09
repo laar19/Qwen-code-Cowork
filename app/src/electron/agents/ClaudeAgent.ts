@@ -1,22 +1,31 @@
 import { Agent } from "./AgentManager"
 
 export class ClaudeAgent implements Agent {
+  private apiKey: string
+  private baseURL: string
+
   constructor() {
-    // Initialize Claude-specific logic
+    this.apiKey = process.env.CLAUDE_API_KEY || ""
+    this.baseURL = "https://api.anthropic.com/v1"
   }
 
   async sendMessage(message: string) {
-    // Implement Claude message sending
-    return { response: "Claude response" }
+    const response = await fetch(`${this.baseURL}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": this.apiKey
+      },
+      body: JSON.stringify({ prompt: message })
+    })
+    return response.json()
   }
 
   async streamResponse(sessionId: string) {
-    // Implement Claude streaming
-    return { stream: "Claude stream" }
+    return { stream: "Claude stream response" }
   }
 
   async getSessionHistory(sessionId: string) {
-    // Implement Claude session history
     return { history: [] }
   }
 }
