@@ -8,10 +8,13 @@ import { runClaude, type RunnerHandle } from "./libs/runner.js"
 import { SessionStore } from "./libs/session-store.js"
 import { app } from "electron"
 import { join } from "path"
+import { saveAgentConfig, getAgentConfig } from "./libs/config-store.js"
+import { AgentManager } from "./agents/AgentManager"
 
 let sessions: SessionStore
 const runnerHandles = new Map<string, RunnerHandle>()
 let workspaces: Record<string, { name: string; sessionIds: string[] }> = {}
+const agentManager = new AgentManager()
 
 function initializeSessions() {
   if (!sessions) {
@@ -59,6 +62,26 @@ function emit(event: ServerEvent) {
   }
   broadcast(event)
 }
+
+// Add agent config handlers
+ipcMain.handle("save-agent-config", async (_, config) => {
+  try {
+    await saveAgentConfig(config)
+    // Update active agent if needed
+    if (config.agent) agentManager.setActiveAgent(config.agent)
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle("get-agent-config", async () => {
+  try {
+    return await getAgentConfig()
+  } catch (error) {
+    return { error: error.message }
+  }
+})
 
 // Export conversation as JSON or Markdown
 ipcMain.handle("export-conversation", async (_, { sessionId, format }) => {
@@ -115,6 +138,9 @@ ipcMain.handle("workspace.list", () => {
   return Object.entries(workspaces).map(([id, ws]) => ({ id, ...ws }))
 })
 
+// Initialize agent manager on startup
+agentManager.initialize().catch(console.error)
+
 export function handleClientEvent(event: ClientEvent) {
   const sessions = initializeSessions()
   // ... rest of your existing handleClientEvent logic
@@ -148,29 +174,20 @@ export function handleClientEvent(event: ClientEvent) {
       payload: { sessionId: session.id, prompt: event.payload.prompt }
     })
 
-    runClaude({
-      prompt: event.payload.prompt,
-      session,
-      resumeSessionId: session.claudeSessionId,
-      onEvent: emit,
-      onSessionUpdate: (updates) => {
-        sessions.updateSession(session.id, updates)
-      }
-    })
-      .then((handle) => {
-        runnerHandles.set(session.id, handle)
-        sessions.setAbortController(session.id, undefined)
+    // Use agent manager to send message
+    agentManager.sendMessage(event.payload.prompt)
+      .then((response) => {
+        emit({
+          type: "stream.message",
+          payload: { sessionId: session.id, message: response }
+        })
       })
       .catch((error) => {
-        sessions.updateSession(session.id, { status: "error" })
         emit({
-          type: "session.status",
+          type: "stream.message",
           payload: {
             sessionId: session.id,
-            status: "error",
-            title: session.title,
-            cwd: session.cwd,
-            error: String(error)
+            message: { role: "system", content: `Error: ${error.message}` }
           }
         })
       })
