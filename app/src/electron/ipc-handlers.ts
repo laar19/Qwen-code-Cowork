@@ -192,6 +192,39 @@ export function handleClientEvent(event: ClientEvent) {
         })
       })
 
+    // Use agent manager to stream response
+    agentManager.streamResponse(session.id, event.payload.prompt)
+      .then(async ({ stream }) => {
+        try {
+          for await (const chunk of stream) {
+            emit({
+              type: "stream.message",
+              payload: {
+                sessionId: session.id,
+                message: { role: "assistant", content: chunk }
+              }
+            })
+          }
+        } catch (error) {
+          emit({
+            type: "stream.message",
+            payload: {
+              sessionId: session.id,
+              message: { role: "system", content: `Stream error: ${error.message}` }
+            }
+          })
+        }
+      })
+      .catch((error) => {
+        emit({
+          type: "stream.message",
+          payload: {
+            sessionId: session.id,
+            message: { role: "system", content: `Stream failed: ${error.message}` }
+          }
+        })
+      })
+
     return
   }
   // ... rest of your logic
